@@ -94,6 +94,37 @@ def otoc_na_vysku(pdf: Path, koren: Path) -> Path:
         return pdf
 
 
+EVIDENCIA = BASE / "vystup" / "vytlacene.json"
+
+
+def norm(x):
+    return re.sub(r"[^0-9a-z]", "", (x or "").lower())
+
+
+def sha(p: Path):
+    import hashlib
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def nacitaj_evidenciu():
+    try:
+        return json.loads(EVIDENCIA.read_text())
+    except Exception:
+        return {"sha": {}, "kluc": {}}
+
+
+def zapis_do_evidencie(evid, polozka, mesiac):
+    zaznam = {"datum": date.today().isoformat(), "mesiac": mesiac, "subor": polozka["subor"].name}
+    evid["sha"][polozka["sha"]] = zaznam
+    if polozka["kluc"]:
+        evid["kluc"][polozka["kluc"]] = zaznam
+    EVIDENCIA.write_text(json.dumps(evid, ensure_ascii=False, indent=1))
+
+
+def najdi_v_evidencii(evid, polozka):
+    return evid["sha"].get(polozka["sha"]) or (evid["kluc"].get(polozka["kluc"]) if polozka["kluc"] else None)
+
+
 def nacitaj_polozky(koren):
     polozky = []
     csv_subor = koren / "faktury.csv"
@@ -110,7 +141,10 @@ def nacitaj_polozky(koren):
             dup = r.get("duplicita", "")
             rozh = "duplicita" if dup.startswith("duplicita") else r["rozhodnutie"].replace("❓", "?")
             cele = any(d in r.get("odosielatel_mailu", "").lower() or d in p.name.lower() for d in config.TLAC_CELE)
+            dod = norm(r.get("dodavatel_ico")) or norm(r.get("dodavatel_nazov"))[:12]
+            cis = norm(r.get("cislo_dokladu"))
             polozky.append({
+                "sha": sha(p), "kluc": f"{dod}|{cis}" if dod and cis else "",
                 "subor": p, "rozh": rozh, "dzp": r.get("dzp") or r.get("datum_vystavenia") or "",
                 "dodavatel": r.get("dodavatel_nazov") or r.get("odosielatel_mailu") or "?",
                 "cislo": r.get("cislo_dokladu") or "", "suma": r.get("suma_spolu") or "",
@@ -119,10 +153,28 @@ def nacitaj_polozky(koren):
                 "default": rozh in ("TLAČ", "? TLAČ"),
             })
     for p in sorted((koren / "vypisy").glob("*.pdf")) if (koren / "vypisy").exists() else []:
-        polozky.append({"subor": p, "rozh": "VÝPIS", "dzp": "", "dodavatel": "výpis z účtu",
+        polozky.append({"sha": sha(p), "kluc": "", "subor": p, "rozh": "VÝPIS", "dzp": "", "dodavatel": "výpis z účtu",
                         "cislo": p.stem, "suma": "", "mena": "", "dovod": "", "dup": "",
                         "smer": "", "cele": True, "default": True})
+    evid = nacitaj_evidenciu()
+    for p in polozky:
+        z = najdi_v_evidencii(evid, p)
+        p["tlacene"] = z
+        if z:
+            p["default"] = False
     return polozky
+
+
+def info_text(p):
+    info = p["dup"].replace("duplicita – tlačí sa ", "→ ") if p["dup"] else p["dovod"]
+    if p["smer"] == "vydaná":
+        info = "VYDANÁ · " + info
+    if p["cele"] and p["rozh"] != "VÝPIS":
+        info = "celá · " + info
+    if p.get("tlacene"):
+        d = p["tlacene"]["datum"]
+        info = f"UŽ TLAČENÉ {d[8:10]}.{d[5:7]}. ({p['tlacene']['mesiac']}) · " + info
+    return info
 
 
 def zobraz(polozky, vyber):
@@ -131,11 +183,7 @@ def zobraz(polozky, vyber):
     for i, p in enumerate(polozky, 1):
         x = "[x]" if vyber[p["subor"].name] else "[ ]"
         suma = f"{p['suma']} {p['mena']}".strip()
-        info = p["dup"].replace("duplicita – tlačí sa ", "→ ") if p["dup"] else p["dovod"]
-        if p["smer"] == "vydaná":
-            info = "VYDANÁ · " + info
-        if p["cele"] and p["rozh"] != "VÝPIS":
-            info = "celá · " + info
+        info = info_text(p)
         print(f" {i:>3}  {x}   {p['rozh'][:11]:11} {p['dzp'][:10]:10}  {p['dodavatel'][:24]:24} "
               f"{p['cislo'][:16]:16} {suma[:11]:>11}  {info[:45]}")
     n = sum(1 for p in polozky if vyber[p["subor"].name])
@@ -150,7 +198,7 @@ def cisla(token, n):
     return [i for i in range(min(a, b), max(a, b) + 1) if 1 <= i <= n]
 
 
-def tlac(polozky, vyber):
+def tlac(polozky, vyber, mesiac=""):
     uloha = [p for p in polozky if vyber[p["subor"].name]]
     if not uloha:
         print("Nič nie je vybrané.")
@@ -158,6 +206,7 @@ def tlac(polozky, vyber):
     print(f"\nTlačiareň: {config.TLACIAREN} · čiernobielo · jednostranne")
     for p in uloha:
         print(f"  {'celá' if p['cele'] else '1. str.':7} {p['subor'].name}")
+    evid = nacitaj_evidenciu()
     if input(f"\nVytlačiť {len(uloha)} dokumentov? (a/n): ").strip().lower() not in ("a", "ano", "áno", "y"):
         print("Zrušené.")
         return
@@ -172,6 +221,10 @@ def tlac(polozky, vyber):
         r = subprocess.run(["lp", "-d", config.TLACIAREN, *config.TLAC_VOLBY, *volby, str(subor)],
                            capture_output=True, text=True)
         print(f"  {'OK' if r.returncode == 0 else 'X ' + r.stderr.strip()} {subor.name}")
+        if r.returncode == 0:
+            zapis_do_evidencie(evid, p, mesiac)
+            p["tlacene"] = evid["sha"][p["sha"]]
+            vyber[p["subor"].name] = False   # vytlačené -> odznačiť, nech sa netlačí dvakrát
 
 
 # numerická klávesnica v "aplikačnom" režime posiela ESC O <znak>
@@ -229,11 +282,7 @@ def sipkovy_rezim(polozky, vyber, uloz):
             x = "[x]" if vyber[p["subor"].name] else "[ ]"
             rozh = p["rozh"]
             suma = f"{p['suma']} {p['mena']}".strip()
-            info = p["dup"].replace("duplicita – tlačí sa ", "→ ") if p["dup"] else p["dovod"]
-            if p["smer"] == "vydaná":
-                info = "VYDANÁ · " + info
-            if p["cele"] and p["rozh"] != "VÝPIS":
-                info = "celá · " + info
+            info = info_text(p)
             text = (f"  {i + 1:>3} {x}  {rozh[:11]:11} {p['dzp'][:10]:10} {p['dodavatel'][:24]:24} "
                     f"{p['cislo'][:16]:16} {suma[:12]:>12}  {info}")
             attr = curses.A_NORMAL
@@ -358,7 +407,7 @@ def main():
             uloz()
             tema.obrazovka(tema.ZELENA)
             if akcia == "t":
-                tlac(polozky, vyber)
+                tlac(polozky, vyber, mesiac)
                 if input("\nSpäť do výberu? (a/n): ").strip().lower() in ("a", "ano", "áno", "y"):
                     continue
             print("Výber uložený.")
@@ -384,7 +433,7 @@ def main():
                 vyber[p["subor"].name] = p["default"]
             uloz(); zobraz(polozky, vyber); continue
         if cmd == "t":
-            uloz(); tlac(polozky, vyber); continue
+            uloz(); tlac(polozky, vyber, mesiac); continue
         if cmd.startswith("o"):
             for t in cmd[1:].split():
                 for i in cisla(t, len(polozky)):
