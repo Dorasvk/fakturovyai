@@ -174,6 +174,41 @@ def tlac(polozky, vyber):
         print(f"  {'OK' if r.returncode == 0 else 'X ' + r.stderr.strip()} {subor.name}")
 
 
+# numerická klávesnica v "aplikačnom" režime posiela ESC O <znak>
+NUMPAD = {"k": "+", "m": "-", "M": "\n", "n": ".", **{chr(ord("p") + i): str(i) for i in range(10)}}
+NUMPAD_KODY = {curses.KEY_C1: "1", curses.KEY_C3: "3", curses.KEY_B2: "5",
+               curses.KEY_A1: "7", curses.KEY_A3: "9", 580: "-", 579: "+"}
+
+
+def citaj_klaves(scr):
+    """Vráti (kód, znak). Rozumie slovenskej klávesnici aj numerickej klávesnici."""
+    try:
+        wk = scr.get_wch()
+    except curses.error:
+        return None, ""
+    if isinstance(wk, int):
+        z = NUMPAD_KODY.get(wk)
+        if z:
+            return ord(z), z
+        return wk, ""
+    if wk == "\x1b":                       # ESC – samostatný, alebo začiatok sekvencie numpadu
+        scr.nodelay(True)
+        try:
+            dalsie = ""
+            for _ in range(2):
+                try:
+                    dalsie += scr.get_wch()
+                except curses.error:
+                    break
+        finally:
+            scr.nodelay(False)
+        if len(dalsie) == 2 and dalsie[0] == "O" and dalsie[1] in NUMPAD:
+            z = NUMPAD[dalsie[1]]
+            return ord(z), z
+        return 27, ""
+    return ord(wk) if len(wk) == 1 else -1, wk
+
+
 def sipkovy_rezim(polozky, vyber, uloz):
     """Vráti 't' ak chce používateľ tlačiť, inak None."""
     locale.setlocale(locale.LC_ALL, "")
@@ -224,6 +259,9 @@ def sipkovy_rezim(polozky, vyber, uloz):
     def beh(scr):
         nonlocal ZELENY
         curses.curs_set(0)
+        # numerickú klávesnicu prepneme do "číselného" režimu -> posiela + - 0-9 ako bežné znaky
+        sys.stdout.write("\033>")
+        sys.stdout.flush()
         if curses.has_colors():
             curses.start_color(); curses.use_default_colors()
             curses.init_pair(1, curses.COLOR_GREEN, -1)
@@ -253,7 +291,9 @@ def sipkovy_rezim(polozky, vyber, uloz):
                 z = curses.color_pair(11) | curses.A_BOLD if ZELENY else curses.A_BOLD
                 scr.addnstr(vys2 - 1, 0, f" > {prikaz}_   (Enter potvrdiť · Esc zrušiť)".ljust(sir2 - 1), sir2 - 1, z)
                 scr.refresh()
-            k = scr.getch()
+            k, _ = citaj_klaves(scr)
+            if k is None:
+                continue
             # rozpísaný príkaz +9 / -3-7 / +2 +5
             if prikaz or k in (ord("+"), ord("-")):
                 if k in (10, 13, curses.KEY_ENTER):
@@ -266,7 +306,7 @@ def sipkovy_rezim(polozky, vyber, uloz):
                     prikaz = ""
                 elif k in (curses.KEY_BACKSPACE, 127, 8):
                     prikaz = prikaz[:-1]
-                elif 0 <= k < 256 and chr(k) in "+-0123456789 ":
+                elif 0 <= k < 0x110000 and chr(k) in "+-0123456789 ":
                     prikaz += chr(k)
                 continue
             if k in (curses.KEY_UP, ord("k")):
