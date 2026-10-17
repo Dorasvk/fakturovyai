@@ -49,3 +49,8 @@ HRANICA_DNI = 10
 
 # Vzhľad výberu v Termináli: "zeleny" (old-school fosfor) alebo "normal"
 TEMA = "zeleny"
+
+# Odtiene zelenej pri výbere (256-farebná paleta terminálu; 46 = klasický fosfor)
+FARBA_VYBRANE = 46     # označené na tlač (tučne)
+FARBA_NEVYBRANE = 28   # neoznačené (tmavšie)
+FARBA_TEXT = 40        # hlavička a ostatný text

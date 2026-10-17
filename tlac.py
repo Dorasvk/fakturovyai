@@ -8,6 +8,7 @@ Použitie:
 
 Šípkový režim:
     ↑ ↓ (PgUp PgDn)  pohyb        MEDZERNÍK  označiť / odznačiť
+    +9 / -10 / +3-7  napíš a potvrď Enterom
     ENTER alebo o    náhľad       t          tlačiť (s potvrdením)
     r                návrh z kroku 3 (zruší ručné zmeny)
     q                koniec (výber sa uloží)
@@ -182,7 +183,7 @@ def sipkovy_rezim(polozky, vyber, uloz):
         scr.erase()
         vys, sir = scr.getmaxyx()
         n = sum(1 for p in polozky if vyber[p["subor"].name])
-        hlav = " ↑↓ pohyb · MEDZERA označiť · ENTER náhľad · r návrh · t tlač · q koniec"
+        hlav = " ↑↓ · MEDZERA označiť · +9 -3-7 · ENTER náhľad · r návrh · t tlač · q koniec"
         z = curses.color_pair(10) if ZELENY else 0
         scr.addnstr(0, 0, f" Vybraných na tlač: {n}/{len(polozky)}  |" + hlav, sir - 1, curses.A_BOLD | z)
         scr.addnstr(1, 0, f"  {'#':>3} tlač {'rozhodnutie':11} {'DZP':10} {'dodávateľ':24} {'číslo':16} {'suma':>12}  info",
@@ -230,13 +231,15 @@ def sipkovy_rezim(polozky, vyber, uloz):
             if ZELENY:
                 v256 = curses.COLORS >= 256
                 cierna = 16 if v256 else curses.COLOR_BLACK
-                curses.init_pair(10, 40 if v256 else curses.COLOR_GREEN, cierna)   # text, hlavička
-                curses.init_pair(11, 120 if v256 else curses.COLOR_GREEN, cierna)  # vybrané – svetlozelená
-                curses.init_pair(12, 22 if v256 else curses.COLOR_GREEN, cierna)   # nevybrané – tmavozelená
+                f = lambda k, d: getattr(config, k, d) if v256 else curses.COLOR_GREEN
+                curses.init_pair(10, f("FARBA_TEXT", 40), cierna)        # text, hlavička
+                curses.init_pair(11, f("FARBA_VYBRANE", 46), cierna)     # vybrané
+                curses.init_pair(12, f("FARBA_NEVYBRANE", 28), cierna)   # nevybrané
                 scr.bkgd(" ", curses.color_pair(10))
         else:
             ZELENY = False
         kurzor, hore = 0, 0
+        prikaz = ""
         while True:
             vys = scr.getmaxyx()[0]
             riadkov = max(1, vys - 3)
@@ -245,7 +248,27 @@ def sipkovy_rezim(polozky, vyber, uloz):
             elif kurzor >= hore + riadkov:
                 hore = kurzor - riadkov + 1
             kresli(scr, kurzor, hore)
+            if prikaz:
+                vys2, sir2 = scr.getmaxyx()
+                z = curses.color_pair(11) | curses.A_BOLD if ZELENY else curses.A_BOLD
+                scr.addnstr(vys2 - 1, 0, f" > {prikaz}_   (Enter potvrdiť · Esc zrušiť)".ljust(sir2 - 1), sir2 - 1, z)
+                scr.refresh()
             k = scr.getch()
+            # rozpísaný príkaz +9 / -3-7 / +2 +5
+            if prikaz or k in (ord("+"), ord("-")):
+                if k in (10, 13, curses.KEY_ENTER):
+                    for t in re.findall(r"[+-][\d-]+", prikaz):
+                        for i in cisla(t[1:], len(polozky)):
+                            vyber[polozky[i - 1]["subor"].name] = t[0] == "+"
+                    uloz()
+                    prikaz = ""
+                elif k == 27:
+                    prikaz = ""
+                elif k in (curses.KEY_BACKSPACE, 127, 8):
+                    prikaz = prikaz[:-1]
+                elif 0 <= k < 256 and chr(k) in "+-0123456789 ":
+                    prikaz += chr(k)
+                continue
             if k in (curses.KEY_UP, ord("k")):
                 kurzor = max(0, kurzor - 1)
             elif k in (curses.KEY_DOWN, ord("j")):
