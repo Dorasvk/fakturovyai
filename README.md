@@ -8,7 +8,7 @@ Hybrid: pevná pipeline (sťahovanie, parsovanie, párovanie podľa VS a sumy) +
 ## Rozbehnutie na novom počítači (macOS, Apple Silicon)
 
 ```bash
-git clone https://github.com/Dorasvk/fakturovyai.git faktury-agent
+git clone git@github.com:Dorasvk/fakturovyai.git faktury-agent
 cd faktury-agent
 CONDA_SUBDIR=osx-arm64 conda create -n faktury python=3.12 -y
 conda activate faktury
