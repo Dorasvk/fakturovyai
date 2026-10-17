@@ -54,3 +54,22 @@ TEMA = "zeleny"
 FARBA_VYBRANE = 46     # označené na tlač (tučne)
 FARBA_NEVYBRANE = 28   # neoznačené (tmavšie)
 FARBA_TEXT = 40        # hlavička a ostatný text
+
+# === VÝPIS: platby bez dokladu ===
+# Platby, ktoré doklad nepotrebujú (regex v type/popise/protistrane, bez ohľadu na veľkosť písmen)
+IGNOROVAT_PLATBY = [
+    r"výber", r"transakčná daň", r"poplatok", r"transakcie_\d+",
+    r"sociáln\w* poisťov", r"socpoist", r"v[sš]zp", r"zdravotn\w* poisťov",
+]
+# Rada, kde doklad zohnať (regex na protistranu/obchodníka -> text)
+NAPOVEDA = {
+    r"microsoft": "faktúra Microsoft 365: admin.microsoft.com → Fakturácia → Faktúry",
+    r"openai|chatgpt": "OpenAI: ChatGPT → Settings → Subscription / platform.openai.com → Billing → Invoices",
+    r"contabo": "Contabo: my.contabo.com → Invoices",
+    r"hetzner": "Hetzner: accounts.hetzner.com → Invoices",
+    r"booking|bkg\*": "Booking: potvrdenie / faktúra od ubytovania alebo požičovne",
+    r"dalnicka|edalnice": "CZ diaľničná známka: edalnice.cz → doklad o zaplatení",
+    r"o2 slovakia": "O2: moje.o2.sk → Faktúry",
+    r"shell|omv \d|slovnaft|orlen|mol ": "bloček z čerpacej stanice",
+    r"park|parking|wiener|linien|ride": "bloček / potvrdenie (parkovanie, MHD)",
+}

@@ -36,7 +36,7 @@ python faktury.py 2026-09      # konkrétny mesiac
 python faktury.py --bez-gmailu # bez sťahovania, len vyčítanie + výber
 python faktury.py --tlac       # rovno výber a tlač
 ```
-Oranžová obrazovka = agent pracuje sám, zelená = čaká na teba (výber šípkami, medzera, Enter = náhľad, t = tlač, q = koniec).
+Oranžová obrazovka = agent pracuje sám, zelená = výber a tlač, biela = platby z výpisu bez dokladu (čo dorobiť ručne) (výber šípkami, medzera, Enter = náhľad, t = tlač, q = koniec).
 
 Nastavenia (dodávatelia, ignorovaní, tlačiareň, čo tlačiť celé, farby): `config.py`.
 Heslo k ZIP výpisom SLSP: `secrets/zip_hesla.txt`. API kľúč Claude: `secrets/anthropic_key.txt`.
@@ -50,6 +50,6 @@ Heslo k ZIP výpisom SLSP: `secrets/zip_hesla.txt`. API kľúč Claude: `secrets
 - [x] Krok 2 – sťahovanie faktúr, rozbaľovanie ZIP
 - [x] Krok 3 – vyčítanie údajov (Claude API), DZP, duplicity
 - [x] Tlač – výber v termináli, 1. strana / celé, otočenie na výšku
-- [ ] Krok 4 – výpis SLSP + párovanie, platby bez faktúry, výnimky
+- [x] Krok 4 – výpis SLSP: platby bez dokladu, výnimky v config.py
 - [ ] Krok 5 – agent na nespárované položky
 - [ ] Pekné GUI

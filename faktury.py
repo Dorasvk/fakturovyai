@@ -6,7 +6,7 @@ Faktúrový agent – všetko jedným príkazom.
     python faktury.py --bez-gmailu # nesťahuje z Gmailu, len vyčíta a ide na výber
     python faktury.py --tlac       # rovno výber a tlač
 
-Oranžová obrazovka = pracujem sám, zelená = čakám na teba.
+Oranžová = pracujem sám · zelená = výber a tlač · biela = platby bez dokladu (čo dorobiť ručne).
 """
 import re
 import subprocess
@@ -41,7 +41,7 @@ def main():
     if "--tlac" not in args:
         if "--bez-gmailu" not in args:
             kroky += [("Sken Gmailu", "1_gmail_scan.py"), ("Sťahovanie faktúr a výpisov", "2_stiahni.py")]
-        kroky += [("Vyčítanie údajov (Claude)", "3_vycitaj.py")]
+        kroky += [("Vyčítanie údajov (Claude)", "3_vycitaj.py"), ("Výpis – platby bez dokladu", "4_nedostatky.py")]
 
     try:
         if kroky:
@@ -52,6 +52,7 @@ def main():
                 spusti(skript, mesiac)
             input(f"\n{tema.TUCNE}Hotovo. Enter = pokračovať na výber a tlač…{tema.RESET}{tema.ORANZOVA}")
         spusti("tlac.py", mesiac)
+        subprocess.run([sys.executable, str(BASE / "4_nedostatky.py"), mesiac, "--zobraz"])
     except KeyboardInterrupt:
         print("\nPrerušené.")
     finally:

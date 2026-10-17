@@ -8,6 +8,7 @@ ZAPNUTE = getattr(config, "TEMA", "normal") == "zeleny" and sys.stdout.isatty()
 _256 = "256" in os.environ.get("TERM", "") or os.environ.get("COLORTERM")
 
 ORANZOVA = ("\033[38;5;214;48;5;16m" if _256 else "\033[33;40m") if ZAPNUTE else ""
+BIELA = ("\033[38;5;255;48;5;16m" if _256 else "\033[37;40m") if ZAPNUTE else ""
 ZELENA = ("\033[38;5;46;48;5;16m" if _256 else "\033[32;40m") if ZAPNUTE else ""
 TUCNE = "\033[1m" if ZAPNUTE else ""
 TLMENE = "\033[2m" if ZAPNUTE else ""
