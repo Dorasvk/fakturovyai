@@ -1,0 +1,21 @@
+# === CITLIVE DATA – nikdy necommitovat ===
+secrets/
+*.json
+!config.example.json
+.env
+.env.*
+
+# Vypisy, faktury, vystupy
+vstup/
+vystup/
+*.pdf
+*.xlsx
+*.xls
+*.csv
+
+# === Python / system ===
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+*.log
