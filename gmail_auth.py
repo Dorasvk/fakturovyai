@@ -48,3 +48,22 @@ def get_service():
         sys.exit(f"Token má navyše oprávnenia {extra} – zmaž secrets/token.json a prihlás sa znova.")
 
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
+
+
+def vykonaj(req, pokusov=8):
+    """Spustí požiadavku na Gmail API; pri prekročení limitu počká a skúsi znova."""
+    import time
+    from googleapiclient.errors import HttpError
+
+    pauza = 5
+    for _ in range(pokusov):
+        try:
+            return req.execute()
+        except HttpError as e:
+            if (e.resp.status in (403, 429) and "rate" in str(e).lower()) or e.resp.status in (500, 503):
+                print(f"  ... limit Gmail API – čakám {pauza} s…")
+                time.sleep(pauza)
+                pauza = min(pauza * 2, 60)
+                continue
+            raise
+    raise RuntimeError("Gmail API opakovane odmieta požiadavky, skús neskôr.")

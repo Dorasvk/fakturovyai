@@ -1,5 +1,8 @@
 # === CITLIVE DATA – nikdy necommitovat ===
 secrets/
+**/zip_hesla*
+*hesl*
+*password*
 *.json
 !config.example.json
 .env

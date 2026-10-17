@@ -53,7 +53,7 @@ def get_service():
 def main():
     svc = get_service()
     profile = svc.users().getProfile(userId="me").execute()
-    print(f"\n✅ Prihlásený ako: {profile['emailAddress']} (len čítanie)\n")
+    print(f"\nOK Prihlásený ako: {profile['emailAddress']} (len čítanie)\n")
 
     query = "has:attachment filename:pdf newer_than:60d"
     res = svc.users().messages().list(userId="me", q=query, maxResults=20).execute()

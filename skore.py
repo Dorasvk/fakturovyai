@@ -5,7 +5,7 @@ import config
 
 SILNE_PREDMET = re.compile(
     r"fakt[uú]r|invoice|rechnung|vy[uú][cč]tovan|da[nň]ov[yý] doklad|dobropis|"
-    r"\breceipt\b|doklad k|\bFA\b|e-?fakt[uú]r|potvrdenie platby|platobn[eé] potvrdenie",
+    r"\breceipt\b|\bdoklad\b|doklad k|\bFA\b|e-?fakt[uú]r|potvrdenie platby|platobn[eé] potvrdenie",
     re.I,
 )
 SILNE_PRILOHA = re.compile(
@@ -28,6 +28,8 @@ MARKETING = re.compile(
 
 
 def ohodnot(odosielatel, predmet, snippet, prilohy, labels):
+    if any(i in odosielatel.lower() for i in getattr(config, "IGNOROVANI_ODOSIELATELIA", [])):
+        return -99, "[-] šum", "ignorovaný odosielateľ"
     s, d = 0, []
     predmet = predmet or ""
     fin = [p for p in prilohy if p.rsplit(".", 1)[-1].lower() in config.PRILOHY]
@@ -60,6 +62,6 @@ def ohodnot(odosielatel, predmet, snippet, prilohy, labels):
         d.append("len podmienky/obrázky")
 
     if re.search(r"v[yý]pis .*[uú][cč]et", predmet, re.I) and "slsp" in odosielatel.lower():
-        return 10, "🏦 výpis", "výpis z účtu SLSP"
-    skupina = "✅ faktúra" if s >= 4 else ("❓ možno" if s >= 2 else "✖ šum")
+        return 10, "[#] výpis", "výpis z účtu SLSP"
+    skupina = "[+] faktúra" if s >= 4 else ("[?] možno" if s >= 2 else "[-] šum")
     return s, skupina, "; ".join(d)

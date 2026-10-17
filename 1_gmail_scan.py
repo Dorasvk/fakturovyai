@@ -64,7 +64,7 @@ def vykonaj(req, pokusov=8):
             return req.execute()
         except HttpError as e:
             if (e.resp.status in (403, 429) and "rate" in str(e).lower()) or e.resp.status in (500, 503):
-                print(f"  ⏳ limit Gmail API – čakám {pauza} s…")
+                print(f"  ... limit Gmail API – čakám {pauza} s…")
                 time.sleep(pauza)
                 pauza = min(pauza * 2, 60)
                 continue
@@ -148,11 +148,11 @@ def main():
 
     pocty = Counter(r["skupina"] for r in riadky)
     print("\nVýsledok:")
-    for k in ["🏦 výpis", "✅ faktúra", "❓ možno", "✖ šum"]:
+    for k in ["[#] výpis", "[+] faktúra", "[?] možno", "[-] šum"]:
         print(f"  {k:12} {pocty.get(k, 0):4}")
-    print("\n✅ Faktúry:")
+    print("\nFaktúry:")
     for r in riadky:
-        if r["skupina"] == "✅ faktúra":
+        if r["skupina"] == "[+] faktúra":
             print(f"  {r['datum']}  {r['domena'][:25]:25}  {r['predmet'][:60]}")
     print(f"\nTabuľka: {subor}")
 
